@@ -86,44 +86,56 @@ prop.table(table(charity.data$region,charity.data$size),margin=2) #proportions b
 ```{r}
 #Making sampling into function so client can use much easier
 
+## Inputs:
+# charity.data: data frame that contains the id, region and size variables of all charities in the population 
+# prop.lt.100: proportion of charities from each unique size region charity group with less than 100 charities that will be included in sample (number sampled from each size region group meeting this criteria is ceiling(proportion*number in group))
+# prop.lt.250: proportion of charities from each unique size region charity group with between 100-249 charities that will be included in sample
+# prop.lt.500: proportion of charities from each unique size region charity group with between 250-499 charities that will be included in sample
+# prop.lt.1000: proportion of charities from each unique size region charity group with between 500-999 charities that will be included in sample 
+# num.gt.1000: number of charities from each unique size region charity group with 1000 or more charities in them that will be included in sample (number sampled from each size region group meeting this criteria is the number chosen for this input)
+
+# Function creates a dataset for each size region group and then randomly samples id's from each of these datasets without replacement with the number sampled depending on the number of charities within the dataset and the sampling proportions chosen. Then returns a dataset of all the charities chosen to be in the sample. 
+
 Stratified.sample.func <- function(charity.data,prop.lt.100,prop.lt.250,prop.lt.500,prop.lt.1000,num.gt.1000){
-Sample.vectors <- list() #list to store sampled charities in 
-
-#stratifying by size then region then sampling (with oversampling on smaller [populations])
-for (i in c("0-10k","10k-100k","100k-1m","1m-10m","10m+")){
-  assign(paste0("charity.size.",i),filter(charity.data,size==i)) #creating a separate dataset for each size category
-  for (j in c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")){
-    assign(paste0("charity.",i,".",j),filter(get(paste0("charity.size.",i)),region==j)) #creating a separate dataset for each region within each size category dataset
-    #Now sampling from within each size region dataset - added rules for what proportion to sample based on sample size to maintain a good sized sample for each group without sampling too much from the groups with larger populations (as have a max sample size of 7000)
+  
+    Sample.vectors <- list() # list to store sampled charities in 
+  
+    for (i in c("0-10k","10k-100k","100k-1m","1m-10m","10m+")){
+      assign(paste0("charity.size.",i),filter(charity.data,size==i)) #creating a separate data set for each size category
+      
+      for (j in c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")){
+        assign(paste0("charity.",i,".",j),filter(get(paste0("charity.size.",i)),region==j)) #creating a separate datas et for each region within each size category data set
+        
+        #Now sampling from within each size region data set - with the proportion sampled depending on the number of charities of the size region dataset
         if(dim(get(paste0("charity.",i,".",j)))[1]==1){
-      assign(paste0("sample.charity.",i,".",j),select(get(paste0("charity.",i,".",j)),id)[[1]]) #If only 1 value need to select that value as sample function behaves differently with only 1 input
+          assign(paste0("sample.charity.",i,".",j),select(get(paste0("charity.",i,".",j)),id)[[1]]) #If only 1 charity in dataset need to select that value as sample function behaves differently with only 1 input
+        }
+        else if(dim(get(paste0("charity.",i,".",j)))[1]<100){
+          assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.100))) #sampling for datasets containing less than 100 charities
+        }
+        else if(dim(get(paste0("charity.",i,".",j)))[1]<250){
+          assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.250))) #sampling for datasets containing 100-249 charities
+        }
+        else if(dim(get(paste0("charity.",i,".",j)))[1]<500){
+          assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.500))) #sampling for datasets containing 250-499 charities
+        }
+        else if(dim(get(paste0("charity.",i,".",j)))[1]<1000){
+          assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.1000)))  #sampling for datasets containing 500-999 charities
+        }
+        else{
+          assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=num.gt.1000)) #sampling for datasets containing 1000 or more charities
+        }
+        Sample.vectors <- append(Sample.vectors,get(paste0("sample.charity.",i,".",j)),after=length(Sample.vectors)) #putting sampled charities into 1 list
+      }
     }
-    else if(dim(get(paste0("charity.",i,".",j)))[1]<100){
-      assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.100))) 
-    }
-    else if(dim(get(paste0("charity.",i,".",j)))[1]<250){
-      assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.250)))
-    }
-    else if(dim(get(paste0("charity.",i,".",j)))[1]<500){
-      assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.500)))
-    }
-    else if(dim(get(paste0("charity.",i,".",j)))[1]<1000){
-      assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*prop.lt.1000)))
-    }
-    else{
-      assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=num.gt.1000)) #sample 100
-    }
-    Sample.vectors <- append(Sample.vectors,get(paste0("sample.charity.",i,".",j)),after=length(Sample.vectors))
-  }
+    Sample.vectors<-unlist(Sample.vectors) 
+    
+    #Matching sampled charities with original data
+    sampled.charities.df <- merge(data.frame("id"=Sample.vectors),charity.data,by="id")
+    
+    return(sampled.charities.df)
 }
-
-Sample.vectors<-unlist(Sample.vectors) #can play around with the percentages sampled from each size region group (currently samples over 30 from each group unless less than 30 in group in which case it takes all)
-
-#Matching with original data
-sampled.charities.df <- merge(data.frame("id"=Sample.vectors),charity.data,by="id")
-return(sampled.charities.df)
-}
-#sampling using stratifing function
+#sampling using stratifying function
 sample.dataset<-Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
 ```
 
