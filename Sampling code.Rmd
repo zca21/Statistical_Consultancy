@@ -30,7 +30,25 @@ charity.data <- data.frame("id"=sample(1:152945, 152945,replace=F),
   mutate(region=factor(region,levels=c("NE","NW","Y&H","EM","WM","EE","L","SE","SW","W","S","U"),
                        labels=c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")),
          size=factor(size,levels = c(1:5),labels = c("0-10k","10k-100k","100k-1m","1m-10m","10m+")))
+
+#Adding in Nialls fake income data code
+# Fake income data
+
+# Dictionary
+LRangeVals <- c('0-10k'=0, '10-100k'=10, '100k-1m'=100, 
+               '1m-10m'=1000, '10m+'=10000)
+URangeVals <- c('0-10k'=10, '10-100k'=100, '100k-1m'=1000, 
+                '1m-10m'=10000, '10m+'=500000)
+
+# Adding values to dataframe
+for (i in 1:nrow(charity.data)) {
+  
+  charity.data$Income[i] <- runif(1, 
+                             min = LRangeVals[charity.data[i, 'size']],
+                             max = URangeVals[charity.data[i, 'size']])
+}
 ```
+
 
 ```{r}
 #looking at frequencies and proportions in total population of charities
@@ -102,59 +120,50 @@ Stratified.sample.func <- function(charity.data,prop.lt.100,prop.lt.250,prop.lt.
 sample.dataset<-Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
 ```
 
-
 ```{r}
+#Using sample to estimate the total income by using weights
+
+# Summary stats
+table_actual_freq <- table(charity.data$region,charity.data$size)
 #investigating sampled dataset frequencies 
-table(sample.dataset$region,sample.dataset$size)
+table_sample_freq<- table(sample.dataset$region,sample.dataset$size)
 
-#Will have to weight those over sampled appropriately (use prop in population/prop in sample then sum to find total aggregate) THINK ABOUT THIS A BIT MORE
+proportion_of_strata_sampled <- round(table_sample_freq/table_actual_freq,3)
+weighting<-table_actual_freq/table_sample_freq
+
+#Performing calculations 
+sample.stats <- sample.dataset%>%
+  group_by(size,region)%>%
+  summarise(total.sample=sum(Income),number.sample=n())
+
+pop.stats <- charity.data%>%
+  group_by(size,region)%>%
+  summarise(total.pop=sum(Income),number.pop=n())
+
+est.strata <- merge(sample.stats,pop.stats,by=c("size","region"))%>%
+  mutate(total.est = number.pop/number.sample*total.sample,
+         perc.difference = abs(1-(total.est/total.pop)))
+#reporting differences for each strata
+est.strata %>%
+  kableExtra::kable(digits=3)%>%
+  kableExtra::kable_classic()
+
+#repeating but grouping by region
+est.strata%>%
+  group_by(region)%>%
+  summarise(est.region=sum(total.est),
+            actual.region=sum(total.pop),
+            perc.difference = abs(1-(est.region/actual.region)))%>%
+  kableExtra::kable(digits=3)%>%
+  kableExtra::kable_classic()
+
+#repeating for size
+est.strata%>%
+  group_by(size)%>%
+  summarise(est.size=sum(total.est),
+            actual.size=sum(total.pop),
+            perc.difference = abs(1-(est.size/actual.size)))%>%
+  kableExtra::kable(digits=3)%>%
+  kableExtra::kable_classic()
 ```
-
-
-
-
-```{r}
-## Old code 
-
-
-# # #stratifying only by size
-# # for (i in c("0-10k","10k-100k","100k-1m","1m-10m","10m+")){
-# #   assign(paste0("charity.size.",i),filter(charity.data,size==i)) 
-# # }
-# 
-# Sample.vectors <- list() #list to store sampled charities in 
-# 
-# #stratifying by size then region then sampling (with oversampling on smaller [populations])
-# for (i in c("0-10k","10k-100k","100k-1m","1m-10m","10m+")){
-#   assign(paste0("charity.size.",i),filter(charity.data,size==i)) #creating a separate dataset for each size category
-#   for (j in c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")){
-#     assign(paste0("charity.",i,".",j),filter(get(paste0("charity.size.",i)),region==j)) #creating a separate dataset for each region within each size category dataset
-#     #Now sampling from within each size region dataset - added rules for what proportion to sample based on sample size to maintain a good sized sample for each group without sampling too much from the groups with larger populations (as have a max sample size of 7000)
-#     if(dim(get(paste0("charity.",i,".",j)))[1]<100){
-#       assign(paste0("sample.charity.",i,".",j),select(get(paste0("charity.",i,".",j)),id)) #If total number of charities in size region less than 100 take whole population
-#     }
-#     else if(dim(get(paste0("charity.",i,".",j)))[1]<250){
-#       assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*0.8)))
-#     }
-#     else if(dim(get(paste0("charity.",i,".",j)))[1]<500){
-#       assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*0.45)))
-#     }
-#     else if(dim(get(paste0("charity.",i,".",j)))[1]<1000){
-#       assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=ceiling(dim(get(paste0("charity.",i,".",j)))[1]*0.15)))
-#     }
-#     else{
-#       assign(paste0("sample.charity.",i,".",j),sample(select(get(paste0("charity.",i,".",j)),id)[[1]],size=120)) #sample 100
-#     }
-#     Sample.vectors <- append(Sample.vectors,get(paste0("sample.charity.",i,".",j)),after=length(Sample.vectors))
-#   }
-# }
-# 
-# Sample.vectors<-unlist(Sample.vectors) #can play around with the percentages sampled from each size region group (currently samples over 30 from each group unless less than 30 in group in which case it takes all)
-# 
-# #Matching with original data
-# sampled.charities.df <- merge(data.frame("id"=Sample.vectors),charity.data,by="id")
-```
-
-
-
 
