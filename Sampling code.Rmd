@@ -154,7 +154,7 @@ est.strata.income%>%
   kableExtra::kable_classic()
 
 #repeating but grouping by region (strata is only region)
-est.strata.income%>%
+est.region.income <- est.strata.income%>%
   group_by(region)%>%
   summarise(sample.region.n=sum(sample.n),
             pop.region.n=sum(pop.n),
@@ -162,12 +162,14 @@ est.strata.income%>%
             est.region.income=sum(est.income),
             actual.region.income=sum(pop.income),
             perc.difference = abs(1-(est.region.income/actual.region.income))*100)%>%
-  mutate(perc.sample=sample.region.n/pop.region.n*100)%>%
+  mutate(perc.sample=sample.region.n/pop.region.n*100)
+
+est.region.income %>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
 
 #repeating but grouping by size (strata is only size)
-est.strata.income%>%
+est.size.income <- est.strata.income%>%
   group_by(size)%>%
   summarise(sample.size.n=sum(sample.n),
             pop.size.n=sum(pop.n),
@@ -175,7 +177,9 @@ est.strata.income%>%
             est.size.income=sum(est.income),
             actual.size.income=sum(pop.income),
             perc.difference = abs(1-(est.size.income/actual.size.income))*100)%>%
-  mutate(perc.sample=sample.size.n/pop.size.n*100)%>%
+  mutate(perc.sample=sample.size.n/pop.size.n*100)
+
+est.size.income %>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
 ```
@@ -248,5 +252,26 @@ sample.diag.size<-sample.diagnostics[[2]]%>%
 #saving diagnostics to spreadsheet
 #writexl::write_xlsx(sample.diag.region,"Sample region strata diagnostics.xlsx")
 #writexl::write_xlsx(sample.diag.size,"Sample size strata diagnostics.xlsx")
+```
+
+
+```{r}
+#Creating simple graphs to display percent of strata sampled
+
+ggplot(data=est.region.income,aes(x=region,y=perc.sample,fill=region))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label = paste0(round(perc.sample,2),"%"," (N=",sample.region.n,")")), vjust = 1.5, colour = "white")+
+  ylab("Percent of strata in sample")+
+  xlab("Region")+
+  ylim(0,100)
+
+
+
+ggplot(data=est.size.income,aes(x=size,y=perc.sample,fill=size))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label = paste0(round(perc.sample,2),"%"," (N=",sample.size.n,")")), vjust = 1.5, colour = "white")+
+  ylab("Percent of strata in sample")+
+  xlab("Size")+
+  ylim(0,100)
 ```
 
