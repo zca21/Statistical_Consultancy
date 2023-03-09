@@ -47,10 +47,8 @@ for (i in 1:nrow(charity.data)) {
                              min = LRangeVals[charity.data[i, 'size']],
                              max = URangeVals[charity.data[i, 'size']])
 }
-```
 
 
-```{r}
 #looking at frequencies and proportions in total population of charities
 table(charity.data$size)
 table(charity.data$region)
@@ -121,49 +119,131 @@ sample.dataset<-Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
 ```
 
 ```{r}
-#Using sample to estimate the total income by using weights
+#Using sample to estimate the total income
 
-# Summary stats
+# Summary stats of actual frequiences of each strata
 table_actual_freq <- table(charity.data$region,charity.data$size)
 #investigating sampled dataset frequencies 
 table_sample_freq<- table(sample.dataset$region,sample.dataset$size)
 
 proportion_of_strata_sampled <- round(table_sample_freq/table_actual_freq,3)
+#weights are inverse of the proportion of strata population sampled (e.g. the weight of a strata with 50% of population in the sample has a weight of 2)
 weighting<-table_actual_freq/table_sample_freq
 
 #Performing calculations 
-sample.stats <- sample.dataset%>%
+#Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the sample and the number of charities in each strata in the sample
+sample.strata.income <- sample.dataset%>%
   group_by(size,region)%>%
-  summarise(total.sample=sum(Income),number.sample=n())
+  summarise(sample.income=sum(Income),sample.n=n())
 
-pop.stats <- charity.data%>%
+#Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the population and the number of charities in each strata in the population (where population is all charities that we want to investigate)
+pop.strata.income <- charity.data%>%
   group_by(size,region)%>%
-  summarise(total.pop=sum(Income),number.pop=n())
+  summarise(pop.income=sum(Income),pop.n=n())
 
-est.strata <- merge(sample.stats,pop.stats,by=c("size","region"))%>%
-  mutate(total.est = number.pop/number.sample*total.sample,
-         perc.difference = abs(1-(total.est/total.pop)))
-#reporting differences for each strata
-est.strata %>%
+#Estimating the total income of each strata by multiplying the sample income by the weights of each sample
+est.strata.income <- merge(sample.strata.income,pop.strata.income,by=c("size","region"))%>%
+  mutate(est.income = pop.n/sample.n*sample.income,
+         perc.difference = abs(1-(est.income/pop.income))*100)
+
+#reporting estimates and absolute percent differences for each strata
+est.strata.income%>%
+  mutate(prop.sample = sample.n/pop.n)%>%
+  select(size,region,sample.n,pop.n,sample.income,prop.sample,pop.income,est.income,perc.difference)%>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
 
-#repeating but grouping by region
-est.strata%>%
+#repeating but grouping by region (strata is only region)
+est.strata.income%>%
   group_by(region)%>%
-  summarise(est.region=sum(total.est),
-            actual.region=sum(total.pop),
-            perc.difference = abs(1-(est.region/actual.region)))%>%
+  summarise(sample.region.n=sum(sample.n),
+            pop.region.n=sum(pop.n),
+            sample.region.income=sum(sample.income),
+            est.region.income=sum(est.income),
+            actual.region.income=sum(pop.income),
+            perc.difference = abs(1-(est.region.income/actual.region.income))*100)%>%
+  mutate(perc.sample=sample.region.n/pop.region.n*100)%>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
 
-#repeating for size
-est.strata%>%
+#repeating but grouping by size (strata is only size)
+est.strata.income%>%
   group_by(size)%>%
-  summarise(est.size=sum(total.est),
-            actual.size=sum(total.pop),
-            perc.difference = abs(1-(est.size/actual.size)))%>%
+  summarise(sample.size.n=sum(sample.n),
+            pop.size.n=sum(pop.n),
+            sample.size.income=sum(sample.income),
+            est.size.income=sum(est.income),
+            actual.size.income=sum(pop.income),
+            perc.difference = abs(1-(est.size.income/actual.size.income))*100)%>%
+  mutate(perc.sample=sample.size.n/pop.size.n*100)%>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
+```
+
+```{r}
+# Creating sample diagnostic funxction to find average absoulte percent difference in income between estimated income using the sample and the true income
+
+sample_diagnostic_func<-function(loop.n){
+
+perc.diff.region <- rep(0,12)
+perc.diff.size <- rep(0,5)
+
+for (i in 1:loop.n){
+  sample.data <- Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
+  
+ #Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the sample and the number of charities in each strata in the sample
+sample.strata.income <- sample.data%>%
+  group_by(size,region)%>%
+  summarise(sample.income=sum(Income),sample.n=n(), .groups = 'drop')
+
+#Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the population and the number of charities in each strata in the population (where population is all charities that we want to investigate)
+pop.strata.income <- charity.data%>%
+  group_by(size,region)%>%
+  summarise(pop.income=sum(Income),pop.n=n(), .groups = 'drop')
+
+#Estimating the total income of each strata by multiplying the sample income by the weights of each sample
+est.strata.income <- merge(sample.strata.income,pop.strata.income,by=c("size","region"))%>%
+  mutate(est.income = pop.n/sample.n*sample.income,
+         perc.difference = abs(1-(est.income/pop.income))*100)
+
+
+#repeating but grouping by region (strata is only region)
+est.region <- est.strata.income%>%
+  group_by(region)%>%
+  summarise(sample.region.n=sum(sample.n),
+            pop.region.n=sum(pop.n),
+            sample.region.income=sum(sample.income),
+            est.region.income=sum(est.income),
+            actual.region.income=sum(pop.income),
+            perc.difference = abs(1-(est.region.income/actual.region.income))*100, .groups = 'drop')
+
+#repeating but grouping by size (strata is only size)
+est.size <- est.strata.income%>%
+  group_by(size)%>%
+  summarise(sample.size.n=sum(sample.n),
+            pop.size.n=sum(pop.n),
+            sample.size.income=sum(sample.income),
+            est.size.income=sum(est.income),
+            actual.size.income=sum(pop.income),
+            perc.difference = abs(1-(est.size.income/actual.size.income))*100, .groups = 'drop')
+  
+  
+perc.diff.region <- perc.diff.region+est.region$perc.difference
+perc.diff.size <- perc.diff.size+est.size$perc.difference
+}
+region.diag<-data.frame("region"= c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown"),
+                        "perc average abs error"=perc.diff.region/loop.n)
+size.diag<-data.frame("size"= c("0-10k","10k-100k","100k-1m","1m-10m","10m+"),"perc average abs error"=perc.diff.size/loop.n)
+
+return(list(region.diag,size.diag))
+}
+
+sample.diagnostics <- sample_diagnostic_func(1000)
+```
+
+```{r}
+#saving diagnostics to spreadsheet
+#writexl::write_xlsx(sample.diagnostics[[1]],"Sample region strata diagnostics.xlsx")
+#writexl::write_xlsx(sample.diagnostics[[2]],"Sample size strata diagnostics.xlsx")
 ```
 
