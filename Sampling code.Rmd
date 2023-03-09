@@ -238,8 +238,15 @@ sample.diagnostics <- sample_diagnostic_func(1000)
 ```
 
 ```{r}
+sample.diag.region<-sample.diagnostics[[1]]%>%
+  mutate(perc.average.abs.error=round(perc.average.abs.error,3))
+
+sample.diag.size<-sample.diagnostics[[2]]%>%
+  mutate(perc.average.abs.error=round(perc.average.abs.error,3))
+
+
 #saving diagnostics to spreadsheet
-#writexl::write_xlsx(sample.diagnostics[[1]],"Sample region strata diagnostics.xlsx")
-#writexl::write_xlsx(sample.diagnostics[[2]],"Sample size strata diagnostics.xlsx")
+#writexl::write_xlsx(sample.diag.region,"Sample region strata diagnostics.xlsx")
+#writexl::write_xlsx(sample.diag.size,"Sample size strata diagnostics.xlsx")
 ```
 
