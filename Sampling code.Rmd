@@ -181,10 +181,11 @@ est.strata.income%>%
 ```
 
 ```{r}
-# Creating sample diagnostic funxction to find average absoulte percent difference in income between estimated income using the sample and the true income
+# Creating sample diagnostic function to find average absolute percent difference in income between estimated income using the sample and the true income
 
 sample_diagnostic_func<-function(loop.n){
 
+#setting up vectors to store percent differences when stratified by either region or size
 perc.diff.region <- rep(0,12)
 perc.diff.size <- rep(0,5)
 
@@ -210,27 +211,22 @@ est.strata.income <- merge(sample.strata.income,pop.strata.income,by=c("size","r
 #repeating but grouping by region (strata is only region)
 est.region <- est.strata.income%>%
   group_by(region)%>%
-  summarise(sample.region.n=sum(sample.n),
-            pop.region.n=sum(pop.n),
-            sample.region.income=sum(sample.income),
-            est.region.income=sum(est.income),
+  summarise(est.region.income=sum(est.income),
             actual.region.income=sum(pop.income),
             perc.difference = abs(1-(est.region.income/actual.region.income))*100, .groups = 'drop')
 
 #repeating but grouping by size (strata is only size)
 est.size <- est.strata.income%>%
   group_by(size)%>%
-  summarise(sample.size.n=sum(sample.n),
-            pop.size.n=sum(pop.n),
-            sample.size.income=sum(sample.income),
-            est.size.income=sum(est.income),
+  summarise(est.size.income=sum(est.income),
             actual.size.income=sum(pop.income),
             perc.difference = abs(1-(est.size.income/actual.size.income))*100, .groups = 'drop')
   
-  
+#adding absolute percent differences to those in previous loops  
 perc.diff.region <- perc.diff.region+est.region$perc.difference
 perc.diff.size <- perc.diff.size+est.size$perc.difference
 }
+#putting inot dataframes and calulating average abs percent difference by dividing my number of loops
 region.diag<-data.frame("region"= c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown"),
                         "perc average abs error"=perc.diff.region/loop.n)
 size.diag<-data.frame("size"= c("0-10k","10k-100k","100k-1m","1m-10m","10m+"),"perc average abs error"=perc.diff.size/loop.n)
