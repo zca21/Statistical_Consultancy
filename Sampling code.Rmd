@@ -4,9 +4,11 @@ output: html_document
 date: "2023-03-04"
 ---
 ```{r}
+#put your working directory inside the below parenthesis
+#setwd()
 library(tidyverse)
 
-#Creating dataset to match that of the client using the infomation from the crosstabs breakdown of variables
+#Creating dataset to match that of the client using the information from the crosstabs breakdown of variables
 
 region <- c(rep("NE",4576),rep("NW",14187),rep("Y&H",10864),rep("EM",11153),rep("WM",12325),rep("EE",17573),rep("L",27574),rep("SE",26831),rep("SW",18412),rep("W",7138),rep("S",303),rep("U",2009))
 #For size 1=0-10k, 2 10-100k, 3 100k-1m, 4 1m-10m, 5 10m+
@@ -258,20 +260,53 @@ sample.diag.size<-sample.diagnostics[[2]]%>%
 ```{r}
 #Creating simple graphs to display percent of strata sampled
 
-ggplot(data=est.region.income,aes(x=region,y=perc.sample,fill=region))+
+region.plot <- ggplot(data=est.region.income,aes(x=region,y=perc.sample,fill=region))+
   geom_bar(stat = "identity")+
-  geom_text(aes(label = paste0(round(perc.sample,2),"%"," (N=",sample.region.n,")")), vjust = 1.5, colour = "white")+
-  ylab("Percent of strata in sample")+
-  xlab("Region")+
-  ylim(0,100)
+  geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -2, colour = "black")+
+  geom_text(aes(label = paste0("(N=",sample.region.n,")")), vjust = -.5, colour = "black")+
+  labs(title = "Percent of each region sampled",x="Region", y="Percent of each region included in the sample")+
+  ylim(0,100)+
+  theme_bw()+
+  theme(axis.title.x = element_text(vjust = 0, size = 20),
+        axis.title.y = element_text(vjust = 2, size = 20),
+        plot.title = element_text(face = "bold",
+                                  margin = margin(10, 0, 10, 0),
+                                  size = 32), 
+        legend.position = "none",
+        axis.text.y = element_text(size = 16),
+        axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1,size=12))
 
-
-
-ggplot(data=est.size.income,aes(x=size,y=perc.sample,fill=size))+
+size.plot <- ggplot(data=est.size.income,aes(x=size,y=perc.sample,fill=size))+
   geom_bar(stat = "identity")+
-  geom_text(aes(label = paste0(round(perc.sample,2),"%"," (N=",sample.size.n,")")), vjust = 1.5, colour = "white")+
-  ylab("Percent of strata in sample")+
-  xlab("Size")+
-  ylim(0,100)
+  geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -2, colour = "black",size=8)+
+  geom_text(aes(label = paste0("(N=",sample.size.n,")")), vjust = -.5, colour = "black",size=8)+
+  labs(title = "Percent of each income band sampled",x="Income band (£)", y="Percent of each income band included in the sample")+
+  ylim(0,100)+
+  theme_bw()+
+  theme(axis.title.x = element_text(vjust = 0, size = 20),
+        axis.title.y = element_text(vjust = 1, size = 20),
+        plot.title = element_text(face = "bold",
+                                  margin = margin(10, 0, 10, 0),
+                                  size = 32), 
+        legend.position = "none",
+        axis.text.y = element_text(size = 16),
+        axis.text.x = element_text(size=12))
 ```
+
+```{r}
+#Saving plots to pdf
+
+pdf("size band sample plot.pdf",
+    width=14,
+    height=10)
+size.plot
+dev.off()
+
+pdf("region sample plot.pdf",
+    width=14,
+    height=10)
+region.plot
+dev.off()
+```
+
 
