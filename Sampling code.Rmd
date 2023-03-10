@@ -146,7 +146,8 @@ pop.strata.income <- charity.data%>%
 #Estimating the total income of each strata by multiplying the sample income by the weights of each sample
 est.strata.income <- merge(sample.strata.income,pop.strata.income,by=c("size","region"))%>%
   mutate(est.income = pop.n/sample.n*sample.income,
-         perc.difference = abs(1-(est.income/pop.income))*100)
+         perc.difference = abs(1-(est.income/pop.income))*100)%>%
+  mutate(perc.sample=sample.n/pop.n*100)
 
 #reporting estimates and absolute percent differences for each strata
 est.strata.income%>%
@@ -240,6 +241,7 @@ size.diag<-data.frame("size"= c("0-10k","10k-100k","100k-1m","1m-10m","10m+"),"p
 return(list(region.diag,size.diag))
 }
 
+#running function (note doing 1000 iterations takes a long time thus saved result in excel spreadsheet that can be accessed from github)
 sample.diagnostics <- sample_diagnostic_func(1000)
 ```
 
@@ -258,14 +260,51 @@ sample.diag.size<-sample.diagnostics[[2]]%>%
 
 
 ```{r}
-#Creating simple graphs to display percent of strata sampled
+#Creating simple graphs to display percent of strata sampled by region, income band and both income band and region
 
 region.plot <- ggplot(data=est.region.income,aes(x=region,y=perc.sample,fill=region))+
   geom_bar(stat = "identity")+
   geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -2, colour = "black")+
   geom_text(aes(label = paste0("(N=",sample.region.n,")")), vjust = -.5, colour = "black")+
-  labs(title = "Percent of each region sampled",x="Region", y="Percent of each region included in the sample")+
+  labs(title = "Percent of each region sampled",x="Region", y="Percent of each region included in the sample",
+       caption="The proportion/number of charities chosen to be included in the sample from each strata was decided by values the consultants selected (values mentioned earlier in presentation), \n selecting different values would yield different resulting percentages sampled")+
   ylim(0,100)+
+  theme_bw()+
+  theme(axis.title.x = element_text(vjust = 0, size = 20),
+        axis.title.y = element_text(vjust = 2, size = 20),
+        plot.title = element_text(face = "bold",
+                                  margin = margin(10, 0, 10, 0),
+                                  size = 32,
+                                  hjust=0.5), 
+        legend.position = "none",
+        axis.text.y = element_text(size = 16),
+        axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1,size=12),
+        plot.caption = element_text(hjust = 0.5))
+
+
+size.plot <- ggplot(data=est.size.income,aes(x=size,y=perc.sample,fill=size))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -2, colour = "black",size=8)+
+  geom_text(aes(label = paste0("(N=",sample.size.n,")")), vjust = -.5, colour = "black",size=8)+
+  labs(title = "Percent of each income band sampled",x="Income band (£)", y="Percent of each income band included in the sample",
+       caption="The proportion/number of charities chosen to be included in the sample from each strata was decided by values the consultants selected (values mentioned earlier in presentation), \n selecting different values would yield different resulting percentages sampled")+
+  ylim(0,100)+
+  theme_bw()+
+  theme(axis.title.x = element_text(vjust = 0, size = 20),
+        axis.title.y = element_text(vjust = 1, size = 20),
+        plot.title = element_text(face = "bold",
+                                  margin = margin(10, 0, 10, 0),
+                                  size = 32,
+                                  hjust=0.5), 
+        legend.position = "none",
+        axis.text.y = element_text(size = 16),
+        axis.text.x = element_text(size=12),
+        plot.caption = element_text(hjust = 0.5))
+
+strata.plot <- ggplot(data=est.strata.income,aes(x=region,y=perc.sample,fill=region))+
+  geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -1.75, colour = "black",size=2)+
+  geom_text(aes(label = paste0("(N=",sample.n,")")), vjust = -0.25, colour = "black",size=2)+
+  geom_bar(stat = "identity",position="dodge")+
   theme_bw()+
   theme(axis.title.x = element_text(vjust = 0, size = 20),
         axis.title.y = element_text(vjust = 2, size = 20),
@@ -274,24 +313,13 @@ region.plot <- ggplot(data=est.region.income,aes(x=region,y=perc.sample,fill=reg
                                   size = 32), 
         legend.position = "none",
         axis.text.y = element_text(size = 16),
-        axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1,size=12))
-
-size.plot <- ggplot(data=est.size.income,aes(x=size,y=perc.sample,fill=size))+
-  geom_bar(stat = "identity")+
-  geom_text(aes(label = paste0(round(perc.sample,2),"%")), vjust = -2, colour = "black",size=8)+
-  geom_text(aes(label = paste0("(N=",sample.size.n,")")), vjust = -.5, colour = "black",size=8)+
-  labs(title = "Percent of each income band sampled",x="Income band (£)", y="Percent of each income band included in the sample")+
-  ylim(0,100)+
-  theme_bw()+
-  theme(axis.title.x = element_text(vjust = 0, size = 20),
-        axis.title.y = element_text(vjust = 1, size = 20),
-        plot.title = element_text(face = "bold",
-                                  margin = margin(10, 0, 10, 0),
-                                  size = 32), 
-        legend.position = "none",
-        axis.text.y = element_text(size = 16),
-        axis.text.x = element_text(size=12))
+        axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1),
+        plot.caption = element_text(hjust = 0.5))+
+  labs(x="Region of charity",y="Percent of charities for each region within each \n income band included in the sample",
+       caption="The proportion/number of charities chosen to be included in the sample from each strata was decided by values the consultants selected (values mentioned earlier in presentation), \n selecting different values would yield different resulting percentages sampled")+
+  facet_wrap(vars(size))
 ```
+
 
 ```{r}
 #Saving plots to pdf
@@ -307,6 +335,30 @@ pdf("region sample plot.pdf",
     height=10)
 region.plot
 dev.off()
+
+pdf("strata sample plot.pdf",
+    width=14,
+    height=10)
+strata.plot
+dev.off()
 ```
+
+```{r}
+#Creating crosstabulations, these have same info as plots but are harder to understand thus reccomend using the plots only
+
+# Summary stats of actual frequiences of each strata
+table_actual_freq <- table(charity.data$region,charity.data$size)
+#investigating sampled dataset frequencies 
+table_sample_freq<- table(sample.dataset$region,sample.dataset$size)
+
+proportion_of_strata_sampled <- round(table_sample_freq/table_actual_freq,3)
+#weights are inverse of the proportion of strata population sampled (e.g. the weight of a strata with 50% of population in the sample has a weight of 2)
+weighting<-table_actual_freq/table_sample_freq
+
+round(table_sample_freq/table_actual_freq,3)%>%
+  kableExtra::kable()%>%
+  kableExtra::kable_classic()
+```
+
 
 
