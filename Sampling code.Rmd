@@ -29,8 +29,9 @@ size <- c(rep(1,1759),rep(2,1718),rep(3,898),rep(4,179),rep(5,22),
 charity.data <- data.frame("id"=sample(1:152945, 152945,replace=F),
                            "region"=region,
                            "size"=size)%>%
-  mutate(region=factor(region,levels=c("NE","NW","Y&H","EM","WM","EE","L","SE","SW","W","S","U"),
-                       labels=c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")),
+  filter(region != "Scotland")%>% #Removing charities based in scotland from the dataset as we are not interested in looking at charities based in Scotland
+  mutate(region=factor(region,levels=c("NE","NW","Y&H","EM","WM","EE","L","SE","SW","W","U"),
+                       labels=c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Unkown")),
          size=factor(size,levels = c(1:5),labels = c("0-10k","10k-100k","100k-1m","1m-10m","10m+")))
 
 #Adding in Nialls fake income data code
@@ -84,7 +85,7 @@ Stratified.sample.func <- function(charity.data,prop.lt.100,prop.lt.250,prop.lt.
     for (i in c("0-10k","10k-100k","100k-1m","1m-10m","10m+")){
       assign(paste0("charity.size.",i),filter(charity.data,size==i)) #creating a separate data set for each size category
       
-      for (j in c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown")){
+      for (j in c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Unkown")){
         assign(paste0("charity.",i,".",j),filter(get(paste0("charity.size.",i)),region==j)) #creating a separate datas et for each region within each size category data set
         
         #Now sampling from within each size region data set - with the proportion sampled depending on the number of charities of the size region dataset
@@ -193,7 +194,7 @@ est.size.income %>%
 sample_diagnostic_func<-function(loop.n){
 
 #setting up vectors to store percent differences when stratified by either region or size
-perc.diff.region <- rep(0,12)
+perc.diff.region <- rep(0,11)
 perc.diff.size <- rep(0,5)
 
 for (i in 1:loop.n){
@@ -234,7 +235,7 @@ perc.diff.region <- perc.diff.region+est.region$perc.difference
 perc.diff.size <- perc.diff.size+est.size$perc.difference
 }
 #putting inot dataframes and calulating average abs percent difference by dividing my number of loops
-region.diag<-data.frame("region"= c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Scotland","Unkown"),
+region.diag<-data.frame("region"= c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Unkown"),
                         "perc average abs error"=perc.diff.region/loop.n)
 size.diag<-data.frame("size"= c("0-10k","10k-100k","100k-1m","1m-10m","10m+"),"perc average abs error"=perc.diff.size/loop.n)
 
@@ -358,6 +359,10 @@ weighting<-table_actual_freq/table_sample_freq
 round(table_sample_freq/table_actual_freq,3)%>%
   kableExtra::kable()%>%
   kableExtra::kable_classic()
+```
+
+```{r}
+charity.data.2<- charity.data
 ```
 
 
