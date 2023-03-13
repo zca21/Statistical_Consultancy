@@ -361,9 +361,7 @@ round(table_sample_freq/table_actual_freq,3)%>%
   kableExtra::kable_classic()
 ```
 
-```{r}
-charity.data.2<- charity.data
-```
+
 
 
 
