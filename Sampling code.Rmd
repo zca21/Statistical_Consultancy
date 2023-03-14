@@ -255,8 +255,8 @@ sample.diag.size<-sample.diagnostics[[2]]%>%
 
 
 #saving diagnostics to spreadsheet
-#writexl::write_xlsx(sample.diag.region,"Sample region strata diagnostics.xlsx")
-#writexl::write_xlsx(sample.diag.size,"Sample size strata diagnostics.xlsx")
+writexl::write_xlsx(sample.diag.region,"Sample region strata diagnostics.xlsx")
+writexl::write_xlsx(sample.diag.size,"Sample size strata diagnostics.xlsx")
 ```
 
 
