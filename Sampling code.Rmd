@@ -4,11 +4,11 @@ output: html_document
 date: "2023-03-04"
 ---
 ```{r}
-#put your working directory inside the below parenthesis
+#put your working directory (where the code and outputs [graphs] will be stored on your computer) inside the below parenthesis
 #setwd()
 library(tidyverse)
 
-#Creating dataset to match that of the client using the information from the crosstabs breakdown of variables
+#Creating dataset to match that of the client using the information from the cross-tabs breakdown of variables
 
 region <- c(rep("NE",4576),rep("NW",14187),rep("Y&H",10864),rep("EM",11153),rep("WM",12325),rep("EE",17573),rep("L",27574),rep("SE",26831),rep("SW",18412),rep("W",7138),rep("S",303),rep("U",2009))
 #For size 1=0-10k, 2 10-100k, 3 100k-1m, 4 1m-10m, 5 10m+
@@ -25,7 +25,7 @@ size <- c(rep(1,1759),rep(2,1718),rep(3,898),rep(4,179),rep(5,22),
           rep(1,119),rep(2,117),rep(3,51),rep(4,15),rep(5,1),
           rep(1,614),rep(2,763),rep(3,473),rep(4,128),rep(5,31))
 
-#Putting infomation into dataset and setting variables to be factors
+#Putting information into a dataset and setting variables to be factors
 charity.data <- data.frame("id"=sample(1:152945, 152945,replace=F),
                            "region"=region,
                            "size"=size)%>%
@@ -34,7 +34,7 @@ charity.data <- data.frame("id"=sample(1:152945, 152945,replace=F),
                        labels=c("North East","North West","Yorkshire & the Hum","East Midlands","West Midlands","East of England","London","South East","South West","Wales","Unkown")),
          size=factor(size,levels = c(1:5),labels = c("0-10k","10k-100k","100k-1m","1m-10m","10m+")))
 
-#Adding in Nialls fake income data code
+#Adding in Nialls fake income data code that assumes charity income is uniformly distributed within the size band
 # Fake income data
 
 # Dictionary
@@ -70,10 +70,15 @@ prop.table(table(charity.data$region,charity.data$size),margin=2) #proportions b
 
 ## Inputs:
 # charity.data: data frame that contains the id, region and size variables of all charities in the population 
+
 # prop.lt.100: proportion of charities from each unique size region charity group with less than 100 charities that will be included in sample (number sampled from each size region group meeting this criteria is ceiling(proportion*number in group))
+
 # prop.lt.250: proportion of charities from each unique size region charity group with between 100-249 charities that will be included in sample
+
 # prop.lt.500: proportion of charities from each unique size region charity group with between 250-499 charities that will be included in sample
+
 # prop.lt.1000: proportion of charities from each unique size region charity group with between 500-999 charities that will be included in sample 
+
 # num.gt.1000: number of charities from each unique size region charity group with 1000 or more charities in them that will be included in sample (number sampled from each size region group meeting this criteria is the number chosen for this input)
 
 # Function creates a dataset for each size region group and then randomly samples id's from each of these datasets without replacement with the number sampled depending on the number of charities within the dataset and the sampling proportions chosen. Then returns a dataset of all the charities chosen to be in the sample. 
@@ -117,29 +122,30 @@ Stratified.sample.func <- function(charity.data,prop.lt.100,prop.lt.250,prop.lt.
     
     return(sampled.charities.df)
 }
-#sampling using stratifying function
+#sampling using stratifying function and chosen proportions to allow 'good' (representative) sized sample from each strata within the 7000 sample size limit
 sample.dataset<-Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
 ```
 
 ```{r}
 #Using sample to estimate the total income
 
-# Summary stats of actual frequiences of each strata
+# Summary stats of actual frequencies of each strata
 table_actual_freq <- table(charity.data$region,charity.data$size)
 #investigating sampled dataset frequencies 
 table_sample_freq<- table(sample.dataset$region,sample.dataset$size)
 
+#propotion of each strata included in the sample
 proportion_of_strata_sampled <- round(table_sample_freq/table_actual_freq,3)
 #weights are inverse of the proportion of strata population sampled (e.g. the weight of a strata with 50% of population in the sample has a weight of 2)
 weighting<-table_actual_freq/table_sample_freq
 
 #Performing calculations 
-#Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the sample and the number of charities in each strata in the sample
+#Creating dataset which calculates the total income of each strata in the sample(sums up the income of charities in the same strata) and the number of charities in each strata in the sample
 sample.strata.income <- sample.dataset%>%
   group_by(size,region)%>%
   summarise(sample.income=sum(Income),sample.n=n())
 
-#Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the population and the number of charities in each strata in the population (where population is all charities that we want to investigate)
+#Creating dataset which calculates the total income of each strata in the population (sums up the income of charities in the same strata) and the number of charities in each strata in the population (where population is all charities that we want to investigate)
 pop.strata.income <- charity.data%>%
   group_by(size,region)%>%
   summarise(pop.income=sum(Income),pop.n=n())
@@ -168,6 +174,7 @@ est.region.income <- est.strata.income%>%
             perc.difference = abs(1-(est.region.income/actual.region.income))*100)%>%
   mutate(perc.sample=sample.region.n/pop.region.n*100)
 
+#nice table output
 est.region.income %>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
@@ -183,22 +190,27 @@ est.size.income <- est.strata.income%>%
             perc.difference = abs(1-(est.size.income/actual.size.income))*100)%>%
   mutate(perc.sample=sample.size.n/pop.size.n*100)
 
+#nice table output
 est.size.income %>%
   kableExtra::kable(digits=3)%>%
   kableExtra::kable_classic()
 ```
 
 ```{r}
-# Creating sample diagnostic function to find average absolute percent difference in income between estimated income using the sample and the true income
+# Creating sample diagnostic function to find average absolute percent difference in income between estimated income using the sample and the true income when performing sampling method n times
 
-sample_diagnostic_func<-function(loop.n){
+#Inputs:
+#loop.n number of times to perform sampling method
+#Other inputs are identical to those of same name in stratified sampling function
+
+sample_diagnostic_func<-function(loop.n,charity.data,prop.lt.100,prop.lt.250,prop.lt.500,prop.lt.1000,num.gt.1000){
 
 #setting up vectors to store percent differences when stratified by either region or size
 perc.diff.region <- rep(0,11)
 perc.diff.size <- rep(0,5)
 
 for (i in 1:loop.n){
-  sample.data <- Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
+  sample.data <- Stratified.sample.func(charity.data,prop.lt.100,prop.lt.250,prop.lt.500,prop.lt.1000,num.gt.1000)
   
  #Creating dataset which calculates the total income of each strata (sums up the income of charities in the same strata) in the sample and the number of charities in each strata in the sample
 sample.strata.income <- sample.data%>%
@@ -243,10 +255,11 @@ return(list(region.diag,size.diag))
 }
 
 #running function (note doing 1000 iterations takes a long time thus saved result in excel spreadsheet that can be accessed from github)
-sample.diagnostics <- sample_diagnostic_func(1000)
+sample.diagnostics <- sample_diagnostic_func(1000,charity.data,1,0.8,0.45,0.15,120)
 ```
 
 ```{r}
+#extracting region and size diagnostics from the function output
 sample.diag.region<-sample.diagnostics[[1]]%>%
   mutate(perc.average.abs.error=round(perc.average.abs.error,3))
 
@@ -343,25 +356,3 @@ pdf("strata sample plot.pdf",
 strata.plot
 dev.off()
 ```
-
-```{r}
-#Creating crosstabulations, these have same info as plots but are harder to understand thus reccomend using the plots only
-
-# Summary stats of actual frequiences of each strata
-table_actual_freq <- table(charity.data$region,charity.data$size)
-#investigating sampled dataset frequencies 
-table_sample_freq<- table(sample.dataset$region,sample.dataset$size)
-
-proportion_of_strata_sampled <- round(table_sample_freq/table_actual_freq,3)
-#weights are inverse of the proportion of strata population sampled (e.g. the weight of a strata with 50% of population in the sample has a weight of 2)
-weighting<-table_actual_freq/table_sample_freq
-
-round(table_sample_freq/table_actual_freq,3)%>%
-  kableExtra::kable()%>%
-  kableExtra::kable_classic()
-```
-
-
-
-
-
