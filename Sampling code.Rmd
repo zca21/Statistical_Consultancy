@@ -127,6 +127,9 @@ sample.dataset<-Stratified.sample.func(charity.data,1,0.8,0.45,0.15,120)
 ```
 
 ```{r}
+#Finding total sample size
+dim(sample.dataset)[1]
+
 #Using sample to estimate the total income
 
 # Summary stats of actual frequencies of each strata
